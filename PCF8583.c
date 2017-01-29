@@ -32,6 +32,7 @@
 #define PLUGIN_VALUENAME8_106 "Year"
 #define I2CADDR 0x51
 
+extern int set_time;
 
 typedef enum {
 	I2C_IDLE,
@@ -49,7 +50,7 @@ const char weekdays[7][4] = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
 
 uint8_t timerval[8];
 
-void PCF8583_ReadTime(uint8_t* i2cval)
+void I2C_read_finished(uint8_t* i2cval)
 {
 	timerval[0] = BCD_TO_BIN(i2cval[1]);  // 100th seconds
 	timerval[1] = BCD_TO_BIN(i2cval[2]);  // seconds
@@ -67,6 +68,12 @@ void PCF8583_ReadTime(uint8_t* i2cval)
 	}
 }
 
+void I2C_write_finished()
+{
+	if(set_time == 0)
+		I2C_start_read(7);
+}
+
 void PCF8583_WriteTime(uint8_t* timerval)
 {
     uint8_t i2cval[7];
@@ -81,27 +88,22 @@ void PCF8583_WriteTime(uint8_t* timerval)
     I2C_start_write(7, i2cval);
 }
 
-void I2C_read_finished(uint8_t *rxbytes)
+
+void PCF8583_PrintTime()
 {
   char timestr[50];
   //const uint8_t monthDays[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-
-  PCF8583_ReadTime(rxbytes);
-  if(timerval[5] == 0)
-  {
+	if(timerval[5] == 0)
+	{
 	  int i;
 	  for(i=0; i<7; i++)
-		  printf("%02X ", rxbytes[i]);
-	  printf("\r\n");
-	  for(i=0; i<7; i++)
 		  printf("%02X ", timerval[i]);
-	  printf("\r\n");
-  }
-  else
-  {
-    sprintf(timestr, "%d:%02d:%02d %s %d.%d", timerval[3], timerval[2], timerval[1],
-      weekdays[timerval[4]], timerval[5], timerval[6]);
-    printf(timestr);
-  }
-  printf("\r\n");
+	}
+	else
+	{
+		sprintf(timestr, "%d:%02d:%02d %s %d.%d", timerval[3], timerval[2], timerval[1],
+		  weekdays[timerval[4]], timerval[5], timerval[6]);
+		printf(timestr);
+	}
+	printf("\r\n");
 }

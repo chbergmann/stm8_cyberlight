@@ -111,6 +111,10 @@ void I2C_ISR()
 		{
 			I2C->DR = TxBuffer[Tx_Idx++];
 		}
+		else
+		{
+			I2C_write_finished();
+		}
 		return;
 	}
 

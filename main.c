@@ -13,10 +13,12 @@
 #include "i2c.h"
 
 volatile uint8_t sw_pwm_tick;
-volatile uint8_t tickcount = 0;
+volatile uint16_t tickcount = 0;
 extern uint8_t newtime[8];
 
 int set_time = 0;
+
+void PCF8583_PrintTime();
 
 void ISR_tick_100us()
 {
@@ -28,6 +30,25 @@ void ISR_tick_100us()
 		GPIOD->ODR &= ~0x02;
 	else
 		GPIOD->ODR |= 0x02;
+
+	if(set_time == 0)	// read time
+	{
+		if(tickcount == 0) {
+			uint8_t reg = 0;
+			I2C_start_write(1, &reg);
+		}
+	}
+	else if(set_time == 1)	// set time
+	{
+		if(tickcount == 0) {
+			PCF8583_WriteTime(newtime);
+			set_time = 0;
+		}
+	}
+
+	tickcount++;
+	if(tickcount >= 10000)
+		tickcount = 0;
 }
 
 void ISR_tick()
@@ -35,27 +56,6 @@ void ISR_tick()
     if (tick) {
         --tick;
     }
-
-	tickcount++;
-	if(set_time == 0)	// read time
-	{
-		if(tickcount == 100) {
-			uint8_t reg = 0;
-			I2C_start_write(1, &reg);
-		}
-		if(tickcount == 200) {
-			I2C_start_read(7);
-			tickcount = 0;
-		}
-	}
-	else if(set_time == 1)	// set time
-	{
-		if(tickcount == 200) {
-			PCF8583_WriteTime(newtime);
-			set_time = 0;
-			tickcount = 0;
-		}
-	}
 
 	ISR_uart_tx();
 }
@@ -139,11 +139,14 @@ int main(void)
 
     // endless loop
     while(1) {
-        while (tick) {
-            wfi();
+		wfi();
+		if(tickcount == 0)
+			PCF8583_PrintTime();
+
+        if (tick == 0) {
+			moodlight_step();
+			setup_pwm();
         }
-        moodlight_step();
-        setup_pwm();
     }
 }
 
