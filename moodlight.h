@@ -19,9 +19,9 @@
 
 struct config_st
 {
-    uint8_t  mode;      /* the active moodlight mode */
-    uint8_t  delay;     /* run moodlight_step() every "delay" PWM cycles */
-    uint8_t  flags;     /* on/off, stopped, direction */
+    uint8_t mode;      /* the active moodlight mode */
+    uint8_t delay;     /* run moodlight_step() every "delay" PWM cycles */
+    uint8_t flags;     /* on/off, stopped, direction */
 	uint8_t level_r;
 	uint8_t level_g;
 	uint8_t level_b;

@@ -11,9 +11,10 @@
 #include "moodlight.h"
 #include "uart.h"
 #include "i2c.h"
+#include <stdio.h>
 
 volatile uint8_t sw_pwm_tick;
-volatile uint16_t tickcount = 0;
+volatile uint8_t tickcount = 0;
 extern uint8_t newtime[8];
 
 int set_time = 0;
@@ -30,6 +31,13 @@ void ISR_tick_100us()
 		GPIOD->ODR &= ~0x02;
 	else
 		GPIOD->ODR |= 0x02;
+}
+
+void ISR_tick()
+{
+    if (tick) {
+        --tick;
+    }
 
 	if(set_time == 0)	// read time
 	{
@@ -47,15 +55,8 @@ void ISR_tick_100us()
 	}
 
 	tickcount++;
-	if(tickcount >= 10000)
-		tickcount = 0;
-}
-
-void ISR_tick()
-{
-    if (tick) {
-        --tick;
-    }
+	//if(tickcount >= 250)
+	//	tickcount = 0;
 
 	ISR_uart_tx();
 }
@@ -118,7 +119,7 @@ void hw_init(void)
 
     // configure timer4 (IRMP)
     TIM4->PSCR = 4; // prescaler=16 => clk=1MHz
-    TIM4->ARR = 99; // overflow every 100us
+    TIM4->ARR = 9; // overflow every 10us
     TIM4->IER = TIM4_IER_UIE; // generate update interrupt
     TIM4->CR1 = TIM4_CR1_CEN; // enable timer
 }
@@ -141,7 +142,12 @@ int main(void)
     while(1) {
 		wfi();
 		if(tickcount == 0)
+		{
 			PCF8583_PrintTime();
+			printf("R%d\r\nG%d\r\nB%d\r\nW%d\r\nM%d\r\nH%d\r\nD%d\r\nF%d\r\n",
+					config.level_r, config.level_g, config.level_b, config.level_w,
+					config.mode, config.huelevel, config.delay, config.flags);
+		}
 
         if (tick == 0) {
 			moodlight_step();

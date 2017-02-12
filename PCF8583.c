@@ -91,8 +91,8 @@ void PCF8583_WriteTime(uint8_t* timerval)
 
 void PCF8583_PrintTime()
 {
-  char timestr[50];
-  //const uint8_t monthDays[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	char timestr[50];
+	//const uint8_t monthDays[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	if(timerval[5] == 0)
 	{
 	  int i;
@@ -101,8 +101,8 @@ void PCF8583_PrintTime()
 	}
 	else
 	{
-		sprintf(timestr, "%d:%02d:%02d %s %d.%d", timerval[3], timerval[2], timerval[1],
-		  weekdays[timerval[4]], timerval[5], timerval[6]);
+		sprintf(timestr, "T%02d:%02d:%02d %s %02d.%02d %d", timerval[3], timerval[2], timerval[1],
+		  weekdays[timerval[4]], timerval[5], timerval[6], timerval[7]);
 		printf(timestr);
 	}
 	printf("\r\n");

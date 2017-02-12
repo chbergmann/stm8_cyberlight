@@ -79,11 +79,73 @@ void moodlight_wakeup(void)
     tick = 1;
 }
 
+#define MAX_CYCLE	(3*(MAX_BRIGHT+1)-1)
+
+void hue_to_rgb(uint16_t cycle, uint8_t *r, uint8_t *g, uint8_t *b)
+{
+	uint16_t lum = cycle % (MAX_BRIGHT + 1);
+    if (cycle <= MAX_BRIGHT) {
+        *r = MAX_BRIGHT - lum;
+        *g = lum;
+        *b = 0;
+    }
+    else if (cycle < 2*(MAX_BRIGHT+1)) {
+        *r = 0;
+        *g = MAX_BRIGHT - lum;
+        *b = lum;
+    }
+    else {
+        *r = lum;
+        *g = 0;
+        *b = MAX_BRIGHT - lum;
+    }
+}
+
+void fire(uint16_t cycle, uint8_t *r, uint8_t *g, uint8_t *b)
+{
+	uint8_t grn;
+	int rand = timerval[0] & 3;
+	*b = 0;
+	*r = 255;
+
+	if(cycle < 42)
+	{
+		grn = 128 + cycle;
+	}
+	else if(cycle < 126)
+	{
+		grn = 212 - cycle;
+	}
+	else if(cycle < 170)
+	{
+		grn = cycle - 42;
+	}
+	else
+	{
+		grn = 128;
+	}
+
+	if(rand == 0)
+	{
+		*g = grn;
+	}
+	else if(rand == 1)
+	{
+		*g = 255 - grn;
+	}
+	else
+	{
+		*g = 128;
+	}
+}
 
 /* called after last pwm phase when tick == 0 */
 void moodlight_step(void)
 {
     if (config.flags & ML_FLAG_OFF) {
+    	config.level_r = 0;
+    	config.level_g = 0;
+    	config.level_b = 0;
         tick= 255;
         return;
     }
@@ -91,163 +153,124 @@ void moodlight_step(void)
     switch (config.mode) {
 
     case 1: /* fading R-G-B */
-        {
-            if (cycle <= MAX_BRIGHT) {
-                config.level_r = (MAX_BRIGHT+1) - cycle;
-                config.level_g = cycle;
-                config.level_b = 0;
-            }
-            else if (cycle <= 2*MAX_BRIGHT) {
-                config.level_r = 0;
-                config.level_g = (2*MAX_BRIGHT+1) - cycle;
-                config.level_b = cycle - MAX_BRIGHT;
-            }
-            else {
-                config.level_r = cycle - (2*MAX_BRIGHT);
-                config.level_g = 0;
-                config.level_b = (3*MAX_BRIGHT+1) - cycle;
-            }
+    {
+    	hue_to_rgb(cycle, &config.level_r, &config.level_g, &config.level_b);
+        tick = config.delay;
+    	if(config.flags & ML_FLAG_UP)
+            cycle = (cycle >= MAX_CYCLE ? 0 : cycle+1);
+    	else
+    		cycle = (cycle == 0 ? MAX_CYCLE : cycle-1);
+    	break;
+    }
 
-            if ((config.flags & ML_FLAG_PAUSE) == 0) {
-                if (config.flags & ML_FLAG_UP) {
-                    cycle = (cycle == 3*MAX_BRIGHT+1 ? 1 : cycle+1);
-                } else {
-                    cycle = (cycle == 0 ? 3*MAX_BRIGHT : cycle-1);;
-                }
-            }
-            tick = config.delay;
-            break;
-        }
-
-    case 2: /* fading R-R+G-G-G+B-B-B+R */
-    case 4: /* fade by clock */
-        {
-            if (cycle <= MAX_BRIGHT) {
-                /* R -> R+G */
-                config.level_r = MAX_BRIGHT;
-                config.level_g = cycle;
-                config.level_b = 0;
-            }
-            else if (cycle <= 2*MAX_BRIGHT) {
-                /* R+G -> G */
-                config.level_r = 2*MAX_BRIGHT+1-cycle;
-                config.level_g = MAX_BRIGHT;
-                config.level_b = 0;
-            }
-            else if (cycle <= 3*MAX_BRIGHT) {
-                /* G -> G+B */
-                config.level_r = 0;
-                config.level_g = MAX_BRIGHT;
-                config.level_b = cycle - 2*MAX_BRIGHT;
-            }
-            else if (cycle <= 4*MAX_BRIGHT) {
-                /* G+B -> B */
-                config.level_r = 0;
-                config.level_g = 4*MAX_BRIGHT+1 - cycle;
-                config.level_b = MAX_BRIGHT;
-            }
-            else if (cycle <= 5*MAX_BRIGHT) {
-                /* B -> B+R */
-                config.level_r = cycle - 4*MAX_BRIGHT;
-                config.level_g = 0;
-                config.level_b = MAX_BRIGHT;
-            }
-            else {
-                /* B+R -> R */
-                config.level_r = MAX_BRIGHT;
-                config.level_g = 0;
-                config.level_b = 6*MAX_BRIGHT+1 - cycle;
-            }
-
-            if ((config.flags & ML_FLAG_PAUSE) == 0) {
-            	uint32_t minSinceMN1 = (timerval[3] * 60 + timerval[2]);
-            	uint32_t minSinceMN = minSinceMN1 * MAX_BRIGHT / 240;
-                if (config.flags & ML_FLAG_UP) {
-                	if(config.mode == 4)
-                		cycle = (minSinceMN + config.huelevel * 6);
-                	else
-                		cycle = (cycle == 6*MAX_BRIGHT+1 ? 1 : cycle+1);
-                } else {
-                	if(config.mode == 4)
-                		cycle = (config.huelevel * 6 - minSinceMN);
-                	else
-                		cycle = (cycle == 0 ? 6*MAX_BRIGHT : cycle-1);
-                }
-
-                if(cycle >= 6*MAX_BRIGHT)
-                	 cycle = cycle - (6*MAX_BRIGHT);
-            }
-            tick = config.delay;
-            break;
-        }
+    case 2: /* fading B-G-R */
+    {
+    	uint8_t r, g, b;
+    	hue_to_rgb(cycle, &r, &g, &b);
+    	config.level_r = MAX_BRIGHT - r;
+    	config.level_g = MAX_BRIGHT - g;
+    	config.level_b = MAX_BRIGHT - b;
+        tick = config.delay;
+    	if(config.flags & ML_FLAG_UP)
+            cycle = (cycle >= MAX_CYCLE ? 0 : cycle+1);
+    	else
+    		cycle = (cycle == 0 ? MAX_CYCLE : cycle-1);
+        break;
+    }
 
     case 3: /* switching R-R+G-G-G+B-B-R+B-R+G+B */
-        {
-            if ((cycle & (ML_MODE3_PERIOD-1)) == 0) {
-                switch (cycle/ML_MODE3_PERIOD) {
-                case 0:
-                    {
-                        config.level_r = MAX_BRIGHT;
-                        config.level_g = 0;
-                        config.level_b = 0;
-                        break;
-                    }
-                case 1:
-                    {
-                        config.level_r = MAX_BRIGHT;
-                        config.level_g = MAX_BRIGHT;
-                        config.level_b = 0;
-                        break;
-                    }
-                case 2:
-                    {
-                        config.level_r = 0;
-                        config.level_g = MAX_BRIGHT;
-                        config.level_b = 0;
-                        break;
-                    }
-                case 3:
-                    {
-                        config.level_r = 0;
-                        config.level_g = MAX_BRIGHT;
-                        config.level_b = MAX_BRIGHT;
-                        break;
-                    }
-                case 4:
-                    {
-                        config.level_r = 0;
-                        config.level_g = 0;
-                        config.level_b = MAX_BRIGHT;
-                        break;
-                    }
-                case 5:
-                    {
-                        config.level_r = MAX_BRIGHT;
-                        config.level_g = 0;
-                        config.level_b = MAX_BRIGHT;
-                        break;
-                    }
-                case 6:
-                    {
-                        config.level_r = MAX_BRIGHT;
-                        config.level_g = MAX_BRIGHT;
-                        config.level_b = MAX_BRIGHT;
-                        break;
-                    }
-                }
-            }
+	{
+		if ((cycle & (ML_MODE3_PERIOD-1)) == 0) {
+			switch (cycle/ML_MODE3_PERIOD) {
+			case 0:
+				{
+					config.level_r = MAX_BRIGHT;
+					config.level_g = 0;
+					config.level_b = 0;
+					break;
+				}
+			case 1:
+				{
+					config.level_r = MAX_BRIGHT;
+					config.level_g = MAX_BRIGHT;
+					config.level_b = 0;
+					break;
+				}
+			case 2:
+				{
+					config.level_r = 0;
+					config.level_g = MAX_BRIGHT;
+					config.level_b = 0;
+					break;
+				}
+			case 3:
+				{
+					config.level_r = 0;
+					config.level_g = MAX_BRIGHT;
+					config.level_b = MAX_BRIGHT;
+					break;
+				}
+			case 4:
+				{
+					config.level_r = 0;
+					config.level_g = 0;
+					config.level_b = MAX_BRIGHT;
+					break;
+				}
+			case 5:
+				{
+					config.level_r = MAX_BRIGHT;
+					config.level_g = 0;
+					config.level_b = MAX_BRIGHT;
+					break;
+				}
+			case 6:
+				{
+					config.level_r = MAX_BRIGHT;
+					config.level_g = MAX_BRIGHT;
+					config.level_b = MAX_BRIGHT;
+					break;
+				}
+			}
+		}
 
-            if ((config.flags & ML_FLAG_PAUSE) == 0) {
-                if (config.flags & ML_FLAG_UP) {
-                	cycle = (cycle == (7*ML_MODE3_PERIOD-1) ? 0 : cycle+1);
-                } else {
-                	cycle = (cycle == 0 ? (7*ML_MODE3_PERIOD-1) : cycle-1);;
-                }
-            }
-            tick = config.delay;
-            break;
-        }
+		if ((config.flags & ML_FLAG_PAUSE) == 0) {
+			if (config.flags & ML_FLAG_UP) {
+				cycle = (cycle == (7*ML_MODE3_PERIOD-1) ? 0 : cycle+1);
+			} else {
+				cycle = (cycle == 0 ? (7*ML_MODE3_PERIOD-1) : cycle-1);;
+			}
+		}
+		tick = config.delay;
+		break;
+	}
 
+    case 4: /* fade by clock */
+		if ((config.flags & ML_FLAG_PAUSE) == 0) {
+			uint16_t hue = config.huelevel;
+			uint32_t minSinceMN = timerval[3];
+			minSinceMN = (minSinceMN * 60 + timerval[2]) * MAX_BRIGHT / 480;
+			if (config.flags & ML_FLAG_UP) {
+				cycle = (minSinceMN + hue * 3);
+				if(cycle > MAX_CYCLE)
+					cycle -= (MAX_CYCLE+1);
+			} else {
+				cycle = (hue * 3 - minSinceMN);
+				if(cycle > MAX_CYCLE)
+					cycle += MAX_CYCLE+1;
+			}
+			hue_to_rgb(cycle, &config.level_r, &config.level_g, &config.level_b);
+		}
+		tick = 250;
+		break;
+
+    case 5: /* fading R-G-B */
+    {
+        cycle = (cycle >= 188 ? 0 : cycle+1);
+    	fire(cycle, &config.level_r, &config.level_g, &config.level_b);
+        tick = 1;
+    	break;
+    }
     }
 }
 

@@ -9,12 +9,12 @@
 
 /*
  * UART Commands:
- * M<0-3>   Moodlight mode (0==off)
+ * M<0-4>   Moodlight mode (0==off, 4=timer)
  * R<0-255> red
  * G<0-255> green
  * B<0-255> blue
  * SV       save values in flash
- * T<0-255>	Time mode with hue level at midnight
+ * H<0-255>	hue level at midnight
  * ST<SSMMHHWWDDMMYY>	set time
  * D<0-255> color change speed
  * C[U|D]	change direction Up or Down
@@ -121,7 +121,7 @@ void ISR_uart_rx()
 			case 'G':
 			case 'B':
 			case 'W':
-			case 'T':
+			case 'H':
 			case 'D':
 				last_command = c;
 				uart_state = USTATE_NUM;
@@ -168,7 +168,7 @@ void ISR_uart_rx()
 					config.level_w = number;
 					config.mode = 0;
 					break;
-				case 'T':
+				case 'H':
 					config.huelevel = number;
 					break;
 				case 'D':
