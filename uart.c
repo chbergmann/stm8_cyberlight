@@ -62,13 +62,14 @@ void InitialiseUART()
   * @brief Retargets the C library printf function to the UART.
   * @param c Character to send
   */
-void putchar (char c)
+int putchar (int c)
 {
 	txbuffer[wrptr++] = c;
 	if(wrptr >= sizeof(txbuffer))
 		wrptr = 0;
 
 	ISR_uart_tx();
+	return c;
 }
 
 /**
@@ -76,7 +77,7 @@ void putchar (char c)
   * @param None
   * @retval char Character to Read
   */
-char getchar (void)
+int getchar (void)
 {
   char c = 0;
 

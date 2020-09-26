@@ -16,3 +16,13 @@ Compile with http://sdcc.sourceforge.net
 
 Flash with https://github.com/vdudouyt/stm8flash
 
+## UART Commands:
+ * M<0-4>   Moodlight mode (0==off, 4=timer)
+ * R<0-255> red
+ * G<0-255> green
+ * B<0-255> blue
+ * SV       save values in flash
+ * H<0-255>	hue level at midnight
+ * ST<SSMMHHWWDDMMYY>	set time
+ * D<0-255> color change speed
+ * C[U|D]	change direction Up or Down

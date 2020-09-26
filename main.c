@@ -137,7 +137,17 @@ int main(void)
 
     // enable interrupts
     rim();
-
+/*
+    newtime[0] = 0;
+    newtime[1] = 0;
+    newtime[2] = 50;
+    newtime[3] = 11;
+    newtime[4] = 6;
+    newtime[5] = 26;
+    newtime[6] = 9;
+    newtime[7] = 20;
+	set_time = 1;
+*/
     // endless loop
     while(1) {
 		wfi();

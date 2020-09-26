@@ -23,7 +23,7 @@ clean:
 	-rm -f $(OBJECTS) $(INTERMEDIATE) $(TARGET)
 
 flash: $(TARGET)
-	stm8flash -c stlinkv2 -p stm8s103 -w $(TARGET)
+	stm8flash -cstlink -pstm8s003?3 -w $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	$(LD) $(LDFLAGS) $(LDLIBS) $^ -o $@
