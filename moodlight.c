@@ -19,7 +19,7 @@
 
 #define ML_MODE3_PERIOD 0x40  /* must be a power of 2 */
 
-uint16_t cycle;     /* counter used by modes */
+static uint16_t cycle = 0;     /* counter used by modes */
 extern uint8_t timerval[8];
 
 struct config_st config;
@@ -48,7 +48,7 @@ void save_config_to_flash()
 
 /* clock tick, decremented once in each PWM cycle */
 
-volatile uint8_t tick;
+volatile uint8_t tick = 1;
 
 
 /* initialization */
@@ -81,7 +81,7 @@ void moodlight_wakeup(void)
 
 #define MAX_CYCLE	(3*(MAX_BRIGHT+1)-1)
 
-void hue_to_rgb(uint16_t cycle, uint8_t *r, uint8_t *g, uint8_t *b)
+void hue_to_rgb(uint8_t *r, uint8_t *g, uint8_t *b)
 {
 	uint16_t lum = cycle % (MAX_BRIGHT + 1);
     if (cycle <= MAX_BRIGHT) {
@@ -139,6 +139,23 @@ void fire(uint16_t cycle, uint8_t *r, uint8_t *g, uint8_t *b)
 	}
 }
 
+uint16_t cycle_from_clock()
+{
+	uint16_t hue = config.huelevel;
+	uint32_t minSinceMN = timerval[3];
+	minSinceMN = (minSinceMN * 60 + timerval[2]) * MAX_BRIGHT / 480;
+	if (config.flags & ML_FLAG_UP) {
+		cycle = (minSinceMN + hue * 3);
+		if(cycle > MAX_CYCLE)
+			cycle -= (MAX_CYCLE+1);
+	} else {
+		cycle = (hue * 3 - minSinceMN);
+		if(cycle > MAX_CYCLE)
+			cycle += MAX_CYCLE+1;
+	}
+	return cycle;
+}
+
 /* called after last pwm phase when tick == 0 */
 void moodlight_step(void)
 {
@@ -154,7 +171,7 @@ void moodlight_step(void)
 
     case 1: /* fading R-G-B */
     {
-    	hue_to_rgb(cycle, &config.level_r, &config.level_g, &config.level_b);
+    	hue_to_rgb(&config.level_r, &config.level_g, &config.level_b);
         tick = config.delay;
     	if(config.flags & ML_FLAG_UP)
             cycle = (cycle >= MAX_CYCLE ? 0 : cycle+1);
@@ -166,7 +183,7 @@ void moodlight_step(void)
     case 2: /* fading B-G-R */
     {
     	uint8_t r, g, b;
-    	hue_to_rgb(cycle, &r, &g, &b);
+    	hue_to_rgb(&r, &g, &b);
     	config.level_r = MAX_BRIGHT - r;
     	config.level_g = MAX_BRIGHT - g;
     	config.level_b = MAX_BRIGHT - b;
@@ -247,19 +264,8 @@ void moodlight_step(void)
 
     case 4: /* fade by clock */
 		if ((config.flags & ML_FLAG_PAUSE) == 0) {
-			uint16_t hue = config.huelevel;
-			uint32_t minSinceMN = timerval[3];
-			minSinceMN = (minSinceMN * 60 + timerval[2]) * MAX_BRIGHT / 480;
-			if (config.flags & ML_FLAG_UP) {
-				cycle = (minSinceMN + hue * 3);
-				if(cycle > MAX_CYCLE)
-					cycle -= (MAX_CYCLE+1);
-			} else {
-				cycle = (hue * 3 - minSinceMN);
-				if(cycle > MAX_CYCLE)
-					cycle += MAX_CYCLE+1;
-			}
-			hue_to_rgb(cycle, &config.level_r, &config.level_g, &config.level_b);
+			cycle_from_clock();
+			hue_to_rgb(&config.level_r, &config.level_g, &config.level_b);
 		}
 		tick = 250;
 		break;
@@ -273,7 +279,6 @@ void moodlight_step(void)
     }
     }
 }
-
 
 inline uint16_t rgblog(uint16_t level)
 {

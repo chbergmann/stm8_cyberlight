@@ -34,21 +34,13 @@
 
 extern int set_time;
 
-typedef enum {
-	I2C_IDLE,
-	I2C_TX,
-	I2C_START_READ,
-	I2C_RECV_TIME,
-} i2c_state_t;
-
-i2c_state_t i2c_state = I2C_IDLE;
-
 const char weekdays[7][4] = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
 
 #define BCD_TO_BIN(x) ((x >> 4) * 10 + (x & 0x0F))
 #define BIN_TO_BCD(x) ((x % 10) + ((x/10) << 4))
 
 uint8_t timerval[8];
+uint8_t time_read_finished = 0;
 
 void I2C_read_finished(uint8_t* i2cval)
 {
@@ -66,6 +58,7 @@ void I2C_read_finished(uint8_t* i2cval)
 	timerval[6] = (i2cval[6] & 0x0F) + m10;  // month
 	timerval[7] = (i2cval[5] >> 6);       // years after last leap year
 	}
+	time_read_finished = 1;
 }
 
 void I2C_write_finished()

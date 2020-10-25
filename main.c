@@ -18,6 +18,7 @@ volatile uint8_t tickcount = 0;
 extern uint8_t newtime[8];
 
 int set_time = 0;
+extern uint8_t time_read_finished;
 
 void PCF8583_PrintTime();
 
@@ -43,6 +44,7 @@ void ISR_tick()
 	{
 		if(tickcount == 0) {
 			uint8_t reg = 0;
+			time_read_finished = 0;
 			I2C_start_write(1, &reg);
 		}
 	}
@@ -55,8 +57,8 @@ void ISR_tick()
 	}
 
 	tickcount++;
-	//if(tickcount >= 250)
-	//	tickcount = 0;
+	if(tickcount >= 250)
+		tickcount = 0;
 
 	ISR_uart_tx();
 }
@@ -124,33 +126,35 @@ void hw_init(void)
     TIM4->CR1 = TIM4_CR1_CEN; // enable timer
 }
 
-
 int main(void)
 {
     hw_init();
     InitialiseUART();
     InitialiseI2C();
-
     moodlight_init();
 
-    setup_pwm();
-
-    // enable interrupts
-    rim();
 /*
-    newtime[0] = 0;
-    newtime[1] = 0;
-    newtime[2] = 50;
-    newtime[3] = 11;
-    newtime[4] = 6;
-    newtime[5] = 26;
-    newtime[6] = 9;
-    newtime[7] = 20;
+    newtime[0] = 0;		// millisecond
+    newtime[1] = 0;		// second
+    newtime[2] = 55;	// minute
+    newtime[3] = 8;		// hour
+    newtime[4] = 6;		// weekday
+    newtime[5] = 25;	// day
+    newtime[6] = 10;		// month
+    newtime[7] = 20;	// year
 	set_time = 1;
 */
+    // enable interrupts
+    rim();
+
+	while(time_read_finished == 0)
+	{
+		wfi();
+	}
+	moodlight_step();
+
     // endless loop
     while(1) {
-		wfi();
 		if(tickcount == 0)
 		{
 			PCF8583_PrintTime();
@@ -163,6 +167,7 @@ int main(void)
 			moodlight_step();
 			setup_pwm();
         }
+		wfi();
     }
 }
 

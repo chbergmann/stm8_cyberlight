@@ -38,5 +38,6 @@ void moodlight_wakeup(void);
 void moodlight_step(void);
 void setup_pwm(void);
 void save_config_to_flash(void);
+void hue_to_rgb(uint8_t *r, uint8_t *g, uint8_t *b);
 
 #endif
